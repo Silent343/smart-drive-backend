@@ -1,5 +1,6 @@
 package pe.edu.upc.smartdrive.platform.iam.infrastructure.authorization.sfs.configuration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -49,10 +50,13 @@ public class WebSecurityConfiguration {
         return new BearerAuthorizationRequestFilter(tokenService, userDetailsService);
     }
 
+    @Value("${cors.allowed-origins:http://localhost:4200}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000"));
+        cors.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);
