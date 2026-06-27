@@ -56,7 +56,7 @@ public class WebSecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of(
-                "https://smart-drive-frontend-berv1.vercel.app",
+                "https://smart-drive-frontend-beryl.vercel.app/",
                 "http://localhost:4200"
         ));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
