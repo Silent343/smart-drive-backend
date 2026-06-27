@@ -50,13 +50,15 @@ public class WebSecurityConfiguration {
         return new BearerAuthorizationRequestFilter(tokenService, userDetailsService);
     }
 
-    @Value("${cors.allowed-origins:http://localhost:4200}")
-    private String allowedOrigins;
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+        cors.setAllowedOrigins(List.of(
+                "https://smart-drive-frontend-berv1.vercel.app",
+                "http://localhost:4200"
+        ));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);
