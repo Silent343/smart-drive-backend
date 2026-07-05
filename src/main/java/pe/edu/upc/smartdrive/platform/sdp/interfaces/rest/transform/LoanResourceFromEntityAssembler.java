@@ -6,55 +6,30 @@ import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource
 
 /**
  * Maps a {@link Loan} entity (or a {@link SimulatedLoan} value object) to its REST resource.
- *
- * <p>A simulated loan has no persisted identity, so its resource carries a {@code null} id;
- * its indicators come from the computation instead of stored columns.</p>
+ * A simulated loan has no persisted identity, so its resource carries a {@code null} id and
+ * its indicators come from the computation instead of stored columns.
  */
 public class LoanResourceFromEntityAssembler {
 
-    public static LoanResource toResourceFromEntity(Loan entity) {
+    public static LoanResource toResourceFromEntity(Loan e) {
         return new LoanResource(
-                entity.getId(),
-                entity.getCarId(),
-                entity.getClientId(),
-                entity.getConfigId(),
-                entity.getInitialFee(),
-                entity.getVehiclePrice(),
-                entity.getLoanAmount(),
-                entity.getInstallmentsQty(),
-                entity.getStartDate(),
-                entity.getFixedInstallment(),
-                entity.getNpvDebtor(),
-                entity.getIrrDebtor(),
-                entity.getTcea(),
-                entity.getTotalInterest(),
-                entity.getTotalInsurance(),
-                entity.getTotalPostage(),
-                entity.getTotalCommission(),
-                entity.getCtc());
+                e.getId(), e.getCarId(), e.getClientId(), e.getConfigId(), e.getSellerId(), e.getStatus(),
+                e.getInitialFee(), e.getVehiclePrice(), e.getLoanAmount(), e.getInstallmentsQty(), e.getStartDate(),
+                e.getFixedInstallment(), e.getNpvDebtor(), e.getIrrDebtor(), e.getTcea(), e.getTrea(),
+                e.getTotalInterest(), e.getTotalInsurance(), e.getTotalRiskInsurance(), e.getTotalGps(),
+                e.getTotalPostage(), e.getTotalCommission(), e.getTotalTax(), e.getInitialCosts(),
+                e.getResidualValue(), e.getCtc());
     }
 
     public static LoanResource toResourceFromSimulated(SimulatedLoan simulated) {
-        var inputs = simulated.inputs();
+        var i = simulated.inputs();
         var c = simulated.computation();
         return new LoanResource(
-                null,
-                inputs.carId(),
-                inputs.clientId(),
-                inputs.configId(),
-                inputs.initialFee(),
-                inputs.vehiclePrice(),
-                inputs.loanAmount(),
-                inputs.installmentsQty(),
-                inputs.startDate(),
-                c.fixedInstallment(),
-                c.npvDebtor(),
-                c.irrDebtor(),
-                c.tcea(),
-                c.totalInterest(),
-                c.totalInsurance(),
-                c.totalPostage(),
-                c.totalCommission(),
-                c.ctc());
+                null, i.carId(), i.clientId(), i.configId(), null, "SIMULATED",
+                i.initialFee(), i.vehiclePrice(), i.loanAmount(), i.installmentsQty(), i.startDate(),
+                c.fixedInstallment(), c.npvDebtor(), c.irrDebtor(), c.tcea(), c.trea(),
+                c.totalInterest(), c.totalInsurance(), c.totalRiskInsurance(), c.totalGps(),
+                c.totalPostage(), c.totalCommission(), c.totalTax(), c.initialCosts(),
+                c.residualValue(), c.ctc());
     }
 }

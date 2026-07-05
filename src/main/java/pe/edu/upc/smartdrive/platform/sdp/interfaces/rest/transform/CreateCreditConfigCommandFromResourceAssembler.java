@@ -5,16 +5,13 @@ import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.CreditConfig
 
 /** Builds a {@link CreateCreditConfigCommand} from the incoming resource; any supplied id is ignored. */
 public class CreateCreditConfigCommandFromResourceAssembler {
-    public static CreateCreditConfigCommand toCommandFromResource(CreditConfigResource resource) {
+    public static CreateCreditConfigCommand toCommandFromResource(CreditConfigResource r) {
         return new CreateCreditConfigCommand(
-                resource.currency(),
-                resource.interestRateType(),
-                resource.annualRate(),
-                resource.capitalization(),
-                resource.gracePeriodType(),
-                resource.gracePeriodMonths(),
-                resource.insuranceRatePct(),
-                resource.postageFeeAmount(),
-                resource.administrationFeePct());
+                r.currency(), r.interestRateType(), r.annualRate(), r.capitalization(),
+                r.gracePeriodType(), r.gracePeriodMonths(), r.insuranceRatePct(), r.postageFeeAmount(),
+                r.administrationFeePct(), r.riskInsuranceRatePctOrZero(), r.gpsFeeAmountOrZero(),
+                r.finalInstallmentPctOrZero(), r.igvItfPctOrZero(), r.notaryCostAmountOrZero(),
+                r.registryCostAmountOrZero(), r.appraisalCostAmountOrZero(), r.studyCommissionAmountOrZero(),
+                r.activationCommissionAmountOrZero(), r.discountAnnualRatePctOrZero());
     }
 }

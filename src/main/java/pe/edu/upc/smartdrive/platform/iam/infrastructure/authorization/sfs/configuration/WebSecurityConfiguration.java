@@ -1,6 +1,5 @@
 package pe.edu.upc.smartdrive.platform.iam.infrastructure.authorization.sfs.configuration;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -50,15 +49,10 @@ public class WebSecurityConfiguration {
         return new BearerAuthorizationRequestFilter(tokenService, userDetailsService);
     }
 
-
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of(
-                "https://smart-drive-frontend-beryl.vercel.app/",
-                "http://localhost:4200"
-        ));
+        cors.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000"));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);

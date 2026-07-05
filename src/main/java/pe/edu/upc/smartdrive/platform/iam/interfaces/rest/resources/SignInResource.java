@@ -1,5 +1,8 @@
 package pe.edu.upc.smartdrive.platform.iam.interfaces.rest.resources;
 
-/** Request body for email/password authentication. */
-public record SignInResource(String email, String password) {
+/**
+ * Request body for authentication. {@code identifier} is the admin email or the
+ * seller username; the backend resolves which scheme applies.
+ */
+public record SignInResource(String identifier, String password) {
 }

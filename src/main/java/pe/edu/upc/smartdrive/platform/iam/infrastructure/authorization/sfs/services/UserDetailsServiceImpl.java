@@ -8,7 +8,8 @@ import pe.edu.upc.smartdrive.platform.iam.domain.repositories.UserRepository;
 import pe.edu.upc.smartdrive.platform.iam.infrastructure.authorization.sfs.model.UserDetailsImpl;
 
 /**
- * Loads users for Spring Security by their email (used as the username).
+ * Loads users for Spring Security by their login handle, which is an admin email or a
+ * seller username. Emails are matched case-insensitively; usernames are matched as stored.
  */
 @Service("defaultUserDetailsService")
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -20,9 +21,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var user = userRepository.findByEmail(username.toLowerCase())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
+    public UserDetails loadUserByUsername(String handle) throws UsernameNotFoundException {
+        var user = userRepository.findByEmail(handle.toLowerCase())
+                .or(() -> userRepository.findByUsername(handle))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + handle));
         return UserDetailsImpl.build(user);
     }
 }

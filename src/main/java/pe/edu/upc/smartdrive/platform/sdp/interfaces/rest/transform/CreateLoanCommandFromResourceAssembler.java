@@ -4,29 +4,21 @@ import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.CreateLoanComman
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource;
 
 /**
- * Builds a {@link CreateLoanCommand} from a {@link LoanResource}. The loan is persisted as
- * supplied by the client (the frontend computes the indicators locally before confirming),
- * so every precomputed field is carried through; any supplied id is ignored.
+ * Builds a {@link CreateLoanCommand} from a {@link LoanResource}. Only the inputs are taken
+ * from the client; the indicators and cost totals are recomputed server-side by the
+ * calculation engine before persistence, so a tampered or stale client cannot store
+ * inconsistent numbers. Totals are seeded to 0 here and overwritten by the command service.
  */
 public class CreateLoanCommandFromResourceAssembler {
-    public static CreateLoanCommand toCommandFromResource(LoanResource resource) {
+    public static CreateLoanCommand toCommandFromResource(LoanResource r) {
         return new CreateLoanCommand(
-                resource.carId(),
-                resource.clientId(),
-                resource.configId(),
-                resource.initialFee(),
-                resource.vehiclePrice(),
-                resource.loanAmount(),
-                resource.installmentsQty(),
-                resource.startDate(),
-                resource.fixedInstallment(),
-                resource.npvDebtor(),
-                resource.irrDebtor(),
-                resource.tcea(),
-                resource.totalInterest(),
-                resource.totalInsurance(),
-                resource.totalPostage(),
-                resource.totalCommission(),
-                resource.ctc());
+                r.carId(), r.clientId(), r.configId(),
+                null,                 // companyId — resolved server-side from the seller
+                r.sellerId(),
+                r.status() != null ? r.status() : "CONFIRMED",
+                r.initialFee(), r.vehiclePrice(), r.loanAmount(), r.installmentsQty(), r.startDate(),
+                0, 0, 0, 0, 0,        // fixedInstallment, npv, irr, tcea, trea
+                0, 0, 0, 0, 0, 0, 0,  // totalInterest, insurance, risk, gps, postage, commission, tax
+                0, 0, 0);             // initialCosts, residualValue, ctc
     }
 }

@@ -4,7 +4,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.aggregates.User;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.queries.GetUserByHandleQuery;
+import pe.edu.upc.smartdrive.platform.iam.domain.services.UserQueryService;
+import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.CreateLoanCommand;
+import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetConfirmedLoansByCompanyQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanByIdQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanReportQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanScheduleQuery;
@@ -26,11 +33,10 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 /**
  * Loan endpoints (SDP bounded context), exposed at {@code /loans}.
  *
- * <p>Confirmed loans are persisted exactly as posted by the client; the amortization
- * schedule and the report are derived data, regenerated on demand by the calculation
- * engine. The simulate endpoint computes indicators without persisting. The report
- * endpoint returns a single-element array, matching the frontend's {@code reports[0]}
- * read.</p>
+ * <p>On confirmation the loan is stamped with the authenticated user's company and, when the
+ * user is a seller, their id; its indicators are recomputed server-side. The schedule and the
+ * report are derived data, regenerated on demand. {@code /loans/confirmed} lets a company admin
+ * review every credit confirmed by their sellers, scoped to their own company.</p>
  */
 @RestController
 @RequestMapping(value = "/loans", produces = APPLICATION_JSON_VALUE)
@@ -39,16 +45,37 @@ public class LoansController {
 
     private final LoanCommandService loanCommandService;
     private final LoanQueryService loanQueryService;
+    private final UserQueryService userQueryService;
 
-    public LoansController(LoanCommandService loanCommandService, LoanQueryService loanQueryService) {
+    public LoansController(LoanCommandService loanCommandService, LoanQueryService loanQueryService,
+                           UserQueryService userQueryService) {
         this.loanCommandService = loanCommandService;
         this.loanQueryService = loanQueryService;
+        this.userQueryService = userQueryService;
+    }
+
+    private User currentUser(Authentication authentication) {
+        return userQueryService.handle(new GetUserByHandleQuery(authentication.getName()))
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
     }
 
     @PostMapping
-    @Operation(summary = "Persist a confirmed loan")
-    public ResponseEntity<LoanResource> create(@RequestBody LoanResource resource) {
-        var command = CreateLoanCommandFromResourceAssembler.toCommandFromResource(resource);
+    @Operation(summary = "Persist a confirmed loan",
+            description = "Stamps the loan with the caller's company (and seller id when applicable) and recomputes its indicators server-side.")
+    public ResponseEntity<LoanResource> create(Authentication authentication, @RequestBody LoanResource resource) {
+        var user = currentUser(authentication);
+        var base = CreateLoanCommandFromResourceAssembler.toCommandFromResource(resource);
+        // Override ownership with the authenticated identity (never trust the client for this).
+        var command = new CreateLoanCommand(
+                base.carId(), base.clientId(), base.configId(),
+                user.getCompanyId(),
+                user.isSeller() ? user.getId() : base.sellerId(),
+                "CONFIRMED",
+                base.initialFee(), base.vehiclePrice(), base.loanAmount(), base.installmentsQty(), base.startDate(),
+                base.fixedInstallment(), base.npvDebtor(), base.irrDebtor(), base.tcea(), base.trea(),
+                base.totalInterest(), base.totalInsurance(), base.totalRiskInsurance(), base.totalGps(),
+                base.totalPostage(), base.totalCommission(), base.totalTax(),
+                base.initialCosts(), base.residualValue(), base.ctc());
         return loanCommandService.handle(command)
                 .map(LoanResourceFromEntityAssembler::toResourceFromEntity)
                 .map(r -> new ResponseEntity<>(r, HttpStatus.CREATED))
@@ -63,6 +90,17 @@ public class LoansController {
                 .map(LoanResourceFromEntityAssembler::toResourceFromSimulated)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.badRequest().build());
+    }
+
+    @GetMapping("/confirmed")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List confirmed loans of the admin's company",
+            description = "Admin-only view of every credit confirmed by the company's sellers.")
+    public ResponseEntity<List<LoanResource>> confirmed(Authentication authentication) {
+        var admin = currentUser(authentication);
+        var loans = loanQueryService.handle(new GetConfirmedLoansByCompanyQuery(admin.getCompanyId())).stream()
+                .map(LoanResourceFromEntityAssembler::toResourceFromEntity).toList();
+        return ResponseEntity.ok(loans);
     }
 
     @GetMapping("/{id}")

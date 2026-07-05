@@ -5,20 +5,11 @@ import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.ScheduleRowR
 
 /** Maps a {@link ScheduleRow} value object to its REST resource. */
 public class ScheduleRowResourceFromValueAssembler {
-    public static ScheduleRowResource toResourceFromValue(ScheduleRow row) {
+    public static ScheduleRowResource toResourceFromValue(ScheduleRow r) {
         return new ScheduleRowResource(
-                row.id(),
-                row.loanId(),
-                row.installmentNo(),
-                row.paymentDate(),
-                row.openingBalance(),
-                row.interest(),
-                row.amortization(),
-                row.insurance(),
-                row.postage(),
-                row.commission(),
-                row.monthlyPayment(),
-                row.endingBalance(),
-                row.gracePeriodType());
+                r.id(), r.loanId(), r.installmentNo(), r.paymentDate(),
+                r.openingBalance(), r.interest(), r.amortization(),
+                r.insurance(), r.riskInsurance(), r.gps(), r.postage(), r.commission(), r.tax(),
+                r.monthlyPayment(), r.endingBalance(), r.gracePeriodType());
     }
 }

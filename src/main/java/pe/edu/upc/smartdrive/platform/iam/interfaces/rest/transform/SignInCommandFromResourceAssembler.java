@@ -6,6 +6,6 @@ import pe.edu.upc.smartdrive.platform.iam.interfaces.rest.resources.SignInResour
 /** Maps a {@link SignInResource} request to a {@link SignInCommand}. */
 public class SignInCommandFromResourceAssembler {
     public static SignInCommand toCommandFromResource(SignInResource resource) {
-        return new SignInCommand(resource.email(), resource.password());
+        return new SignInCommand(resource.identifier(), resource.password());
     }
 }

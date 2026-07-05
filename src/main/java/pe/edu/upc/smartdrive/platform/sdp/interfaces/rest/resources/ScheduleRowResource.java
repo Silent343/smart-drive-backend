@@ -14,8 +14,11 @@ public record ScheduleRowResource(
         @JsonProperty("interest") double interest,
         @JsonProperty("amortization") double amortization,
         @JsonProperty("insurance") double insurance,
+        @JsonProperty("risk_insurance") double riskInsurance,
+        @JsonProperty("gps") double gps,
         @JsonProperty("postage") double postage,
         @JsonProperty("commission") double commission,
+        @JsonProperty("tax") double tax,
         @JsonProperty("monthly_payment") double monthlyPayment,
         @JsonProperty("ending_balance") double endingBalance,
         @JsonProperty("grace_period_type") String gracePeriodType) {

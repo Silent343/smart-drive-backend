@@ -16,8 +16,10 @@ import pe.edu.upc.smartdrive.platform.arm.domain.repositories.VehicleCommercialR
 import pe.edu.upc.smartdrive.platform.arm.domain.repositories.VehicleRepository;
 import pe.edu.upc.smartdrive.platform.arm.domain.repositories.VehicleSpecificationRepository;
 import pe.edu.upc.smartdrive.platform.iam.application.internal.outboundservices.hashing.HashingService;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.aggregates.Company;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.aggregates.User;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.SignUpCommand;
+import pe.edu.upc.smartdrive.platform.iam.domain.repositories.CompanyRepository;
 import pe.edu.upc.smartdrive.platform.iam.domain.repositories.UserRepository;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.CreditConfig;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.Loan;
@@ -47,6 +49,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     private static final String CLIENT_ID = "zzxasas";
 
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
     private final HashingService hashingService;
     private final CreditConfigRepository creditConfigRepository;
     private final VehicleRepository vehicleRepository;
@@ -56,6 +59,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final LoanRepository loanRepository;
 
     public DemoDataSeeder(UserRepository userRepository,
+                          CompanyRepository companyRepository,
                           HashingService hashingService,
                           CreditConfigRepository creditConfigRepository,
                           VehicleRepository vehicleRepository,
@@ -64,6 +68,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                           ClientRepository clientRepository,
                           LoanRepository loanRepository) {
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
         this.hashingService = hashingService;
         this.creditConfigRepository = creditConfigRepository;
         this.vehicleRepository = vehicleRepository;
@@ -84,9 +89,12 @@ public class DemoDataSeeder implements CommandLineRunner {
 
     private void seedUser() {
         if (userRepository.count() > 0) return;
+        // Provision the demo company (tenant) first, then its administrator.
+        var company = companyRepository.save(
+                new Company("Gird", "20988317377", "gird", 5));
         var command = new SignUpCommand("fernand04@gmail.com", "Sukerj$23", "Fernando",
-                "51351414", "20988317377", "983772888", "Gird");
-        var user = new User(command, hashingService.encode(command.password()));
+                "51351414", "20988317377", "983772888", "Gird", "gird", 5);
+        var user = new User(command, company.getId(), hashingService.encode(command.password()));
         user.enableTotpWithSecret(DEMO_TOTP_SECRET);
         userRepository.save(user);
     }
@@ -94,19 +102,19 @@ public class DemoDataSeeder implements CommandLineRunner {
     private void seedCreditConfigs() {
         if (creditConfigRepository.count() > 0) return;
         // id 1
-        creditConfigRepository.save(new CreditConfig(new CreateCreditConfigCommand(
+        creditConfigRepository.save(new CreditConfig(CreateCreditConfigCommand.basic(
                 "USD", "efectiva", 9.5, null, "partial", 5, 0.05, 3.5, 0.9)));
         // id 2
-        creditConfigRepository.save(new CreditConfig(new CreateCreditConfigCommand(
+        creditConfigRepository.save(new CreditConfig(CreateCreditConfigCommand.basic(
                 "PEN", "efectiva", 9.5, null, "partial", 4, 0.05, 3.5, 2)));
         // id 3
-        creditConfigRepository.save(new CreditConfig(new CreateCreditConfigCommand(
+        creditConfigRepository.save(new CreditConfig(CreateCreditConfigCommand.basic(
                 "PEN", "efectiva", 9.5, null, "none", 5, 0.05, 3.5, 2)));
         // id 4
-        creditConfigRepository.save(new CreditConfig(new CreateCreditConfigCommand(
+        creditConfigRepository.save(new CreditConfig(CreateCreditConfigCommand.basic(
                 "PEN", "efectiva", 9.5, null, "partial", 4, 0.05, 3.5, 2)));
         // id 5
-        creditConfigRepository.save(new CreditConfig(new CreateCreditConfigCommand(
+        creditConfigRepository.save(new CreditConfig(CreateCreditConfigCommand.basic(
                 "PEN", "efectiva", 9.5, null, "partial", 4, 0.05, 3.5, 2)));
     }
 
@@ -173,8 +181,12 @@ public class DemoDataSeeder implements CommandLineRunner {
     private void save(Long configId, double initialFee, double vehiclePrice, double loanAmount, int installmentsQty,
                       Instant startDate, double fixedInstallment, double npvDebtor, double irrDebtor, double tcea,
                       double totalInterest, double totalInsurance, double totalPostage, double totalCommission, double ctc) {
-        loanRepository.save(new Loan(new CreateLoanCommand(VEHICLE_ID, CLIENT_ID, configId, initialFee, vehiclePrice,
-                loanAmount, installmentsQty, startDate, fixedInstallment, npvDebtor, irrDebtor, tcea, totalInterest,
-                totalInsurance, totalPostage, totalCommission, ctc)));
+        loanRepository.save(new Loan(new CreateLoanCommand(
+                VEHICLE_ID, CLIENT_ID, configId,
+                null, null, "CONFIRMED",
+                initialFee, vehiclePrice, loanAmount, installmentsQty, startDate,
+                fixedInstallment, npvDebtor, irrDebtor, tcea, 0.0,
+                totalInterest, totalInsurance, 0.0, 0.0, totalPostage, totalCommission, 0.0,
+                0.0, 0.0, ctc)));
     }
 }

@@ -1,6 +1,7 @@
 package pe.edu.upc.smartdrive.platform.sdp.domain.services;
 
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.Loan;
+import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetConfirmedLoansByCompanyQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanByIdQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanReportQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanScheduleQuery;
@@ -15,4 +16,5 @@ public interface LoanQueryService {
     Optional<Loan> handle(GetLoanByIdQuery query);
     List<ScheduleRow> handle(GetLoanScheduleQuery query);
     Optional<LoanReportData> handle(GetLoanReportQuery query);
+    List<Loan> handle(GetConfirmedLoansByCompanyQuery query);
 }

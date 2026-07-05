@@ -2,6 +2,7 @@ package pe.edu.upc.smartdrive.platform.sdp.application.internal.queryservices;
 
 import org.springframework.stereotype.Service;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.Loan;
+import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetConfirmedLoansByCompanyQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanByIdQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanReportQuery;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanScheduleQuery;
@@ -57,9 +58,14 @@ public class LoanQueryServiceImpl implements LoanQueryService {
                         .map(config -> new LoanReportData(loan, config, compute(loan, config).schedule())));
     }
 
+    @Override
+    public List<Loan> handle(GetConfirmedLoansByCompanyQuery query) {
+        return loanRepository.findByCompanyIdAndStatusOrderByIdDesc(query.companyId(), "CONFIRMED");
+    }
+
     private LoanComputation compute(Loan loan, pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.CreditConfig config) {
         return loanCalculationService.calculate(
                 loan.getLoanAmount(), loan.getInstallmentsQty(), loan.getStartDate(),
-                config, String.valueOf(loan.getId()));
+                config, loan.getVehiclePrice(), String.valueOf(loan.getId()));
     }
 }

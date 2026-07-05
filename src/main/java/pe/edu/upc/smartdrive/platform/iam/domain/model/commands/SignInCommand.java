@@ -1,7 +1,7 @@
 package pe.edu.upc.smartdrive.platform.iam.domain.model.commands;
 
 /**
- * Command expressing the intent to authenticate with email and password.
+ * Command to authenticate with an identifier (admin email or seller username) and password.
  */
-public record SignInCommand(String email, String password) {
+public record SignInCommand(String identifier, String password) {
 }

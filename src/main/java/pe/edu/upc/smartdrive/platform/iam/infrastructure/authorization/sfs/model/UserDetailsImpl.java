@@ -10,7 +10,8 @@ import java.util.List;
 
 /**
  * Adapts the IAM {@link User} aggregate to Spring Security's {@link UserDetails}.
- * The principal username is the user's email.
+ * The principal username is the user's login handle (admin email or seller username),
+ * and the authority is derived from the user's role ({@code ROLE_ADMIN} / {@code ROLE_SELLER}).
  */
 public class UserDetailsImpl implements UserDetails {
 
@@ -25,8 +26,8 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     public static UserDetailsImpl build(User user) {
-        var authorities = List.<GrantedAuthority>of(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase()));
-        return new UserDetailsImpl(user.getEmail(), user.getPassword(), authorities);
+        var authorities = List.<GrantedAuthority>of(new SimpleGrantedAuthority(user.getRole().authority()));
+        return new UserDetailsImpl(user.loginHandle(), user.getPassword(), authorities);
     }
 
     @Override public Collection<? extends GrantedAuthority> getAuthorities() { return authorities; }

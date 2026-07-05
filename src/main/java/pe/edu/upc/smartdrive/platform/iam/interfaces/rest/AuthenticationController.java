@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.ConfirmTotpSetupCommand;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.ForgotPasswordCommand;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.ResetPasswordCommand;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.SetupTotpCommand;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.commands.VerifyTotpCommand;
 import pe.edu.upc.smartdrive.platform.iam.domain.services.UserCommandService;
@@ -48,7 +50,8 @@ public class AuthenticationController {
             return ResponseEntity.ok(new TotpChallengeResource(true, user.getPublicId()));
         }
         var token = userCommandService.issueTokenFor(user);
-        return ResponseEntity.ok(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(user, token));
+        var domain = userCommandService.resolveCompanyDomain(user);
+        return ResponseEntity.ok(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(user, domain, token));
     }
 
     /** Registers a new administrator account. */
@@ -92,6 +95,27 @@ public class AuthenticationController {
         if (user.isEmpty())
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new SuccessResource(false));
         var token = userCommandService.issueTokenFor(user.get());
-        return ResponseEntity.ok(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(user.get(), token));
+        var domain = userCommandService.resolveCompanyDomain(user.get());
+        return ResponseEntity.ok(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(user.get(), domain, token));
+    }
+
+    /** Starts a password reset. Returns the token directly in this demo (no email service). */
+    @PostMapping("/authentication/forgot-password")
+    @Operation(summary = "Forgot password",
+            description = "Issues a single-use reset token for the account. Always reports success to avoid account enumeration.")
+    public ResponseEntity<ForgotPasswordResultResource> forgotPassword(@RequestBody ForgotPasswordResource resource) {
+        var token = userCommandService.handle(new ForgotPasswordCommand(resource.identifier()));
+        // Always 200 with requested=true; token is present only when the account existed.
+        return ResponseEntity.ok(new ForgotPasswordResultResource(true, token.orElse(null)));
+    }
+
+    /** Completes a password reset using a valid token and a policy-compliant new password. */
+    @PostMapping("/authentication/reset-password")
+    @Operation(summary = "Reset password",
+            description = "Sets a new password when the reset token is valid, unused and not expired.")
+    public ResponseEntity<SuccessResource> resetPassword(@RequestBody ResetPasswordResource resource) {
+        var ok = userCommandService.handle(new ResetPasswordCommand(resource.token(), resource.newPassword()));
+        if (!ok) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new SuccessResource(false));
+        return ResponseEntity.ok(new SuccessResource(true));
     }
 }
