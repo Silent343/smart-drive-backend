@@ -52,7 +52,7 @@ public class WebSecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000"));
+        cors.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000", "https://smart-drive-frontend-beryl.vercel.app"));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);
