@@ -181,7 +181,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     private void save(Long configId, double initialFee, double vehiclePrice, double loanAmount, int installmentsQty,
                       Instant startDate, double fixedInstallment, double npvDebtor, double irrDebtor, double tcea,
                       double totalInterest, double totalInsurance, double totalPostage, double totalCommission, double ctc) {
-        loanRepository.save(new Loan(new CreateLoanCommand(
+        loanRepository.save(new Loan(CreateLoanCommand.single(
                 VEHICLE_ID, CLIENT_ID, configId,
                 null, null, "CONFIRMED",
                 initialFee, vehiclePrice, loanAmount, installmentsQty, startDate,

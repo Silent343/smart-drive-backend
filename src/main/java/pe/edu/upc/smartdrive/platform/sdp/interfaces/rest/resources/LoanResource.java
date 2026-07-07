@@ -36,5 +36,12 @@ public record LoanResource(
         @JsonProperty("total_tax") double totalTax,
         @JsonProperty("initial_costs") double initialCosts,
         @JsonProperty("residual_value") double residualValue,
-        @JsonProperty("ctc") double ctc) {
+        @JsonProperty("ctc") double ctc,
+        @JsonProperty("vehicles") java.util.List<LoanVehicleResource> vehicles) {
+
+    /** A financed vehicle inside a loan payload: the ARM vehicle id and its price. */
+    public record LoanVehicleResource(
+            @JsonProperty("car_id") String carId,
+            @JsonProperty("price") double price) {
+    }
 }

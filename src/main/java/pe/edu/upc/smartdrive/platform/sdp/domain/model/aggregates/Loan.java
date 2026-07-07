@@ -1,10 +1,17 @@
 package pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.CreateLoanCommand;
+import pe.edu.upc.smartdrive.platform.sdp.domain.model.valueobjects.LoanVehicle;
 import pe.edu.upc.smartdrive.platform.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.time.Instant;
 
 /**
@@ -22,9 +29,18 @@ import java.time.Instant;
 @Entity
 public class Loan extends AuditableAbstractAggregateRoot<Loan> {
 
-    private String carId;       // FK -> ARM vehicle
+    private String carId;       // FK -> ARM vehicle (primary/first vehicle, kept for compatibility)
     private String clientId;    // FK -> ARM client
     private Long configId;      // FK -> CreditConfig
+
+    /**
+     * All vehicles financed by this credit, stored in the child table {@code loan_vehicle}.
+     * The loan's {@code vehiclePrice} is the sum of these prices, and {@code carId} mirrors the
+     * first vehicle so existing single-vehicle consumers keep working.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "loan_vehicle", joinColumns = @JoinColumn(name = "loan_id"))
+    private List<LoanVehicle> vehicles = new ArrayList<>();
 
     // Tenancy / ownership (bloque 1 + 3 support)
     private Long companyId;     // FK -> Company
@@ -62,14 +78,28 @@ public class Loan extends AuditableAbstractAggregateRoot<Loan> {
     }
 
     public Loan(CreateLoanCommand c) {
-        this.carId = c.carId();
         this.clientId = c.clientId();
         this.configId = c.configId();
         this.companyId = c.companyId();
         this.sellerId = c.sellerId();
         this.status = c.status() != null ? c.status() : "CONFIRMED";
+
+        // Multi-vehicle: build the child collection. Falls back to the single carId when the
+        // command carries no explicit vehicle list (keeps older callers working).
+        this.vehicles = new ArrayList<>();
+        if (c.vehicles() != null && !c.vehicles().isEmpty()) {
+            c.vehicles().forEach(v -> this.vehicles.add(new LoanVehicle(v.carId(), v.price())));
+        } else if (c.carId() != null) {
+            this.vehicles.add(new LoanVehicle(c.carId(), c.vehiclePrice()));
+        }
+        // carId mirrors the first vehicle for single-vehicle compatibility.
+        this.carId = this.vehicles.isEmpty() ? c.carId() : this.vehicles.get(0).getCarId();
+
         this.initialFee = c.initialFee();
-        this.vehiclePrice = c.vehiclePrice();
+        // vehiclePrice is the sum of all financed vehicles (or the provided value when no list).
+        this.vehiclePrice = this.vehicles.isEmpty()
+                ? c.vehiclePrice()
+                : this.vehicles.stream().mapToDouble(LoanVehicle::getPrice).sum();
         this.loanAmount = c.loanAmount();
         this.installmentsQty = c.installmentsQty();
         this.startDate = c.startDate();
@@ -91,6 +121,7 @@ public class Loan extends AuditableAbstractAggregateRoot<Loan> {
     }
 
     public String getCarId() { return carId; }
+    public List<LoanVehicle> getVehicles() { return vehicles; }
     public String getClientId() { return clientId; }
     public Long getConfigId() { return configId; }
     public Long getCompanyId() { return companyId; }

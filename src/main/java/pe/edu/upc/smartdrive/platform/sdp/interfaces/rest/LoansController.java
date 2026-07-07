@@ -21,6 +21,7 @@ import pe.edu.upc.smartdrive.platform.sdp.domain.services.LoanQueryService;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanReportResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.ConfirmedLoanResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource;
+import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource.LoanVehicleResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.ScheduleRowResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.transform.CreateLoanCommandFromResourceAssembler;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.transform.LoanReportResourceFromDataAssembler;
@@ -67,8 +68,9 @@ public class LoansController {
     public ResponseEntity<LoanResource> create(Authentication authentication, @RequestBody LoanResource resource) {
         var user = currentUser(authentication);
         var base = CreateLoanCommandFromResourceAssembler.toCommandFromResource(resource);
-        // Override ownership with the authenticated identity (never trust the client for this).
-        var command = new CreateLoanCommand(
+        // Override ownership with the authenticated identity (never trust the client for this),
+        // preserving the multi-vehicle list resolved by the assembler.
+        var command = CreateLoanCommand.single(
                 base.carId(), base.clientId(), base.configId(),
                 user.getCompanyId(),
                 user.isSeller() ? user.getId() : base.sellerId(),
@@ -77,7 +79,8 @@ public class LoansController {
                 base.fixedInstallment(), base.npvDebtor(), base.irrDebtor(), base.tcea(), base.trea(),
                 base.totalInterest(), base.totalInsurance(), base.totalRiskInsurance(), base.totalGps(),
                 base.totalPostage(), base.totalCommission(), base.totalTax(),
-                base.initialCosts(), base.residualValue(), base.ctc());
+                base.initialCosts(), base.residualValue(), base.ctc())
+                .withVehicles(base.vehicles());
         return loanCommandService.handle(command)
                 .map(LoanResourceFromEntityAssembler::toResourceFromEntity)
                 .map(r -> new ResponseEntity<>(r, HttpStatus.CREATED))
@@ -95,9 +98,9 @@ public class LoansController {
     }
 
     @GetMapping("/confirmed")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "List confirmed loans of the admin's company",
-            description = "Admin-only view of every credit confirmed by the company's sellers, with the seller name resolved.")
+    @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
+    @Operation(summary = "List confirmed loans of the current user's company",
+            description = "Company-scoped view of every confirmed credit, with the seller name resolved.")
     public ResponseEntity<List<ConfirmedLoanResource>> confirmed(Authentication authentication) {
         var admin = currentUser(authentication);
         var loans = loanQueryService.handle(new GetConfirmedLoansByCompanyQuery(admin.getCompanyId())).stream()
@@ -108,10 +111,14 @@ public class LoansController {
                             : userQueryService.handle(new GetUserByIdQuery(loan.getSellerId()))
                                 .map(User::getFullName)
                                 .orElse("Administrador");
+                    var vehicles = loan.getVehicles().stream()
+                            .map(vehicle -> new LoanVehicleResource(vehicle.getCarId(), vehicle.getPrice()))
+                            .toList();
                     return new ConfirmedLoanResource(
                             loan.getId(), loan.getCarId(), loan.getClientId(),
                             loan.getSellerId(), sellerName, loan.getStatus(),
-                            loan.getVehiclePrice(), loan.getInstallmentsQty(), loan.getTcea(), loan.getCtc());
+                            loan.getVehiclePrice(), loan.getInstallmentsQty(), loan.getTcea(), loan.getCtc(),
+                            vehicles);
                 })
                 .toList();
         return ResponseEntity.ok(loans);

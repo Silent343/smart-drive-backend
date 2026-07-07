@@ -1,6 +1,9 @@
 package pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource.LoanVehicleResource;
+
+import java.util.List;
 
 /**
  * Read model for the admin's confirmed-credits report. It extends the plain loan data with the
@@ -18,5 +21,6 @@ public record ConfirmedLoanResource(
         @JsonProperty("vehicle_price") double vehiclePrice,
         @JsonProperty("instalments_qty") int installmentsQty,
         @JsonProperty("tcea") double tcea,
-        @JsonProperty("ctc") double ctc) {
+        @JsonProperty("ctc") double ctc,
+        @JsonProperty("vehicles") List<LoanVehicleResource> vehicles) {
 }

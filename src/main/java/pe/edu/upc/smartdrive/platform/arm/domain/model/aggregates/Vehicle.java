@@ -33,6 +33,11 @@ public class Vehicle extends AuditableStringIdAggregateRoot {
         return this;
     }
 
+    public Vehicle markAsSold() {
+        this.status = "sold";
+        return this;
+    }
+
     public String getCode() { return code; }
     public String getStatus() { return status; }
     public String getImageUrl() { return imageUrl; }

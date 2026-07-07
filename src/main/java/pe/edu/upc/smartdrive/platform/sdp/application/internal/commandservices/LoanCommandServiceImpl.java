@@ -1,6 +1,9 @@
 package pe.edu.upc.smartdrive.platform.sdp.application.internal.commandservices;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pe.edu.upc.smartdrive.platform.arm.domain.model.aggregates.Vehicle;
+import pe.edu.upc.smartdrive.platform.arm.domain.repositories.VehicleRepository;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.aggregates.Loan;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.CreateLoanCommand;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.SimulateLoanCommand;
@@ -28,13 +31,16 @@ public class LoanCommandServiceImpl implements LoanCommandService {
     private final LoanRepository loanRepository;
     private final CreditConfigRepository creditConfigRepository;
     private final LoanCalculationService loanCalculationService;
+    private final VehicleRepository vehicleRepository;
 
     public LoanCommandServiceImpl(LoanRepository loanRepository,
                                   CreditConfigRepository creditConfigRepository,
-                                  LoanCalculationService loanCalculationService) {
+                                  LoanCalculationService loanCalculationService,
+                                  VehicleRepository vehicleRepository) {
         this.loanRepository = loanRepository;
         this.creditConfigRepository = creditConfigRepository;
         this.loanCalculationService = loanCalculationService;
+        this.vehicleRepository = vehicleRepository;
     }
 
     /**
@@ -55,17 +61,22 @@ public class LoanCommandServiceImpl implements LoanCommandService {
     }
 
     @Override
+    @Transactional
     public Optional<Loan> handle(CreateLoanCommand command) {
         return creditConfigRepository.findById(command.configId()).map(config -> {
             validateLoanInputs(command.vehiclePrice(), command.initialFee(), command.loanAmount(),
                     command.installmentsQty(), config);
+            // Multi-vehicle: reject duplicated vehicles within the same credit.
+            var carIds = command.vehicles().stream().map(CreateLoanCommand.Vehicle::carId).toList();
+            if (carIds.size() != carIds.stream().distinct().count())
+                throw new IllegalArgumentException("No se puede repetir el mismo vehículo en un crédito");
             LoanComputation c = loanCalculationService.calculate(
                     command.loanAmount(), command.installmentsQty(), command.startDate(),
                     config, command.vehiclePrice(), "pending");
 
-            // Recompose the command with the server-computed indicators, preserving the inputs
-            // and ownership fields the caller supplied.
-            var enriched = new CreateLoanCommand(
+            // Recompose the command with the server-computed indicators, preserving the inputs,
+            // ownership fields and the multi-vehicle list the caller supplied.
+            var enriched = CreateLoanCommand.single(
                     command.carId(), command.clientId(), command.configId(),
                     command.companyId(), command.sellerId(), command.status(),
                     command.initialFee(), command.vehiclePrice(), command.loanAmount(),
@@ -73,12 +84,25 @@ public class LoanCommandServiceImpl implements LoanCommandService {
                     c.fixedInstallment(), c.npvDebtor(), c.irrDebtor(), c.tcea(), c.trea(),
                     c.totalInterest(), c.totalInsurance(), c.totalRiskInsurance(), c.totalGps(),
                     c.totalPostage(), c.totalCommission(), c.totalTax(),
-                    c.initialCosts(), c.residualValue(), c.ctc());
+                    c.initialCosts(), c.residualValue(), c.ctc())
+                    .withVehicles(command.vehicles());
 
             var loan = new Loan(enriched);
             loanRepository.save(loan);
+            markFinancedVehiclesAsSold(loan);
             return loan;
         });
+    }
+
+    private void markFinancedVehiclesAsSold(Loan loan) {
+        var soldVehicles = loan.getVehicles().stream()
+                .map(loanVehicle -> vehicleRepository.findById(loanVehicle.getCarId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Vehículo no encontrado: " + loanVehicle.getCarId())))
+                .map(Vehicle::markAsSold)
+                .toList();
+
+        vehicleRepository.saveAll(soldVehicles);
     }
 
     @Override
