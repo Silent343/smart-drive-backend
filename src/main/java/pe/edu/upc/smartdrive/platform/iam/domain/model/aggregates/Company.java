@@ -64,7 +64,7 @@ public class Company extends AuditableAbstractAggregateRoot<Company> {
         this.defaultGpsFeeAmount = 0.0;
         this.defaultPostageFeeAmount = 3.5;
         this.defaultAdministrationFeePct = 0.0;
-        this.defaultIgvItfPct = 18.0;
+        this.defaultIgvItfPct = 0.0;
         this.defaultStudyCommissionAmount = 0.0;
         this.defaultActivationCommissionAmount = 0.0;
     }

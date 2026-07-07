@@ -49,10 +49,20 @@ public class WebSecurityConfiguration {
         return new BearerAuthorizationRequestFilter(tokenService, userDetailsService);
     }
 
+    /**
+     * CORS origins are read from the {@code CORS_ORIGIN} environment variable (comma-separated),
+     * falling back to the local dev origins. This lets the deployed frontend (e.g. the Vercel URL)
+     * talk to the API without recompiling: set CORS_ORIGIN in the hosting provider.
+     */
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @org.springframework.beans.factory.annotation.Value(
+                "${cors.allowed-origins:http://localhost:4200,http://localhost:3000}") String allowedOrigins) {
         var cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000", "https://smart-drive-frontend-beryl.vercel.app"));
+        cors.setAllowedOrigins(java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(o -> !o.isBlank())
+                .toList());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);
@@ -62,14 +72,15 @@ public class WebSecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(configurer -> configurer.configurationSource(corsConfigurationSource()));
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+        http.cors(configurer -> configurer.configurationSource(corsConfigurationSource));
         http.csrf(csrf -> csrf.disable())
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedRequestHandler))
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/authentication/**",
+                                "/advisor/**",
                                 "/totp-setup",
                                 "/verify-totp-setup",
                                 "/verify-totp",

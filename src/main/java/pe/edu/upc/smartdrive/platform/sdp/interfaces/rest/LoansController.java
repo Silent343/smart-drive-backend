@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.aggregates.User;
 import pe.edu.upc.smartdrive.platform.iam.domain.model.queries.GetUserByHandleQuery;
+import pe.edu.upc.smartdrive.platform.iam.domain.model.queries.GetUserByIdQuery;
 import pe.edu.upc.smartdrive.platform.iam.domain.services.UserQueryService;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.commands.CreateLoanCommand;
 import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetConfirmedLoansByCompanyQuery;
@@ -18,6 +19,7 @@ import pe.edu.upc.smartdrive.platform.sdp.domain.model.queries.GetLoanScheduleQu
 import pe.edu.upc.smartdrive.platform.sdp.domain.services.LoanCommandService;
 import pe.edu.upc.smartdrive.platform.sdp.domain.services.LoanQueryService;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanReportResource;
+import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.ConfirmedLoanResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.LoanResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.resources.ScheduleRowResource;
 import pe.edu.upc.smartdrive.platform.sdp.interfaces.rest.transform.CreateLoanCommandFromResourceAssembler;
@@ -95,11 +97,23 @@ public class LoansController {
     @GetMapping("/confirmed")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "List confirmed loans of the admin's company",
-            description = "Admin-only view of every credit confirmed by the company's sellers.")
-    public ResponseEntity<List<LoanResource>> confirmed(Authentication authentication) {
+            description = "Admin-only view of every credit confirmed by the company's sellers, with the seller name resolved.")
+    public ResponseEntity<List<ConfirmedLoanResource>> confirmed(Authentication authentication) {
         var admin = currentUser(authentication);
         var loans = loanQueryService.handle(new GetConfirmedLoansByCompanyQuery(admin.getCompanyId())).stream()
-                .map(LoanResourceFromEntityAssembler::toResourceFromEntity).toList();
+                .map(loan -> {
+                    // Resolve the seller's display name from the internal id stored on the loan.
+                    String sellerName = loan.getSellerId() == null
+                            ? "Administrador"
+                            : userQueryService.handle(new GetUserByIdQuery(loan.getSellerId()))
+                                .map(User::getFullName)
+                                .orElse("Administrador");
+                    return new ConfirmedLoanResource(
+                            loan.getId(), loan.getCarId(), loan.getClientId(),
+                            loan.getSellerId(), sellerName, loan.getStatus(),
+                            loan.getVehiclePrice(), loan.getInstallmentsQty(), loan.getTcea(), loan.getCtc());
+                })
+                .toList();
         return ResponseEntity.ok(loans);
     }
 
