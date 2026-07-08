@@ -6,16 +6,22 @@ import pe.edu.upc.smartdrive.platform.advisor.domain.model.valueobjects.AdvisorA
 import pe.edu.upc.smartdrive.platform.advisor.domain.services.AdvisorCommandService;
 import pe.edu.upc.smartdrive.platform.advisor.domain.services.LanguageModelPort;
 import pe.edu.upc.smartdrive.platform.advisor.domain.services.LoanFiguresProvider;
+import pe.edu.upc.smartdrive.platform.advisor.domain.services.LoanFiguresProvider.LoanFigures;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Default implementation of the advisor command side.
  *
- * <p>Orchestrates the flow: load the loan's real figures, build a grounded
+ * <p>Orchestrates the flow: resolve the loan's real figures, build a grounded
  * prompt, and delegate generation to the language model port. The figures are
  * the single source of truth, which is what stops the model from inventing
  * numbers.</p>
+ *
+ * <p>Figures come from one of two places: a confirmed loan loaded by its id, or
+ * — during a simulation, when no {@code loanId} exists yet — the inline figures
+ * carried in the request. Either grounds the answer equally well.</p>
  */
 @Service
 public class AdvisorCommandServiceImpl implements AdvisorCommandService {
@@ -43,7 +49,7 @@ public class AdvisorCommandServiceImpl implements AdvisorCommandService {
     private final LanguageModelPort languageModel;
 
     /**
-     * @param loanFiguresProvider supplies the loan's grounded figures
+     * @param loanFiguresProvider supplies a confirmed loan's grounded figures
      * @param languageModel       the LLM port used to generate the answer
      */
     public AdvisorCommandServiceImpl(
@@ -58,16 +64,16 @@ public class AdvisorCommandServiceImpl implements AdvisorCommandService {
      */
     @Override
     public AdvisorAnswer handle(AskAdvisorCommand command) {
-        var figures = loanFiguresProvider.figuresFor(command.loanId());
+        Optional<LoanFigures> figures = resolveFigures(command);
 
         if (figures.isEmpty()) {
             return new AdvisorAnswer(
-                    "No encontré el crédito indicado, así que no puedo responder "
-                            + "sobre sus cifras. Verifica que el préstamo exista.",
+                    "No tengo las cifras del crédito para responder. Ejecuta la "
+                            + "simulación o confirma el préstamo e inténtalo de nuevo.",
                     List.of());
         }
 
-        var loanFigures = figures.get();
+        LoanFigures loanFigures = figures.get();
         String answer = languageModel.generate(
                 SYSTEM_INSTRUCTION,
                 loanFigures.groundingText(),
@@ -75,5 +81,26 @@ public class AdvisorCommandServiceImpl implements AdvisorCommandService {
                 command.question());
 
         return new AdvisorAnswer(answer, loanFigures.figureLabels());
+    }
+
+    /**
+     * Resolves the figures to ground on: a confirmed loan (by id) when it
+     * exists, otherwise the inline simulated figures carried in the request.
+     *
+     * @param command the incoming command
+     * @return the figures, or empty when neither source is available
+     */
+    private Optional<LoanFigures> resolveFigures(AskAdvisorCommand command) {
+        if (command.loanId() != null) {
+            Optional<LoanFigures> persisted =
+                    loanFiguresProvider.figuresFor(command.loanId());
+            if (persisted.isPresent()) {
+                return persisted;
+            }
+        }
+        if (command.inlineFigures() != null) {
+            return Optional.of(command.inlineFigures().toLoanFigures());
+        }
+        return Optional.empty();
     }
 }

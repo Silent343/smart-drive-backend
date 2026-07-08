@@ -19,7 +19,7 @@ import java.util.List;
  * <p>Each installment carries, on top of interest and amortization, the recurring costs:
  * desgravamen insurance and all-risk insurance (both a percentage of the outstanding
  * balance), a fixed GPS fee, postage, an administration commission, and the IGV/ITF tax
- * applied over fees and insurance. When the credit uses the Compra Inteligente residual
+ * applied over interest and taxable charges, never over amortized principal. When the credit uses the Compra Inteligente residual
  * value, a balloon amount ({@code finalInstallmentPct} of the vehicle price) is left for
  * the last installment, lowering the amortized base. Besides the debtor indicators (NPV,
  * IRR, TCEA) the engine also computes the investor-side TREA at the configured opportunity
@@ -106,8 +106,8 @@ public class LoanCalculationService {
                 }
             }
 
-            // IGV/ITF is applied over fees and insurance (not over interest or amortization).
-            double taxableFees = insurance + riskInsurance + gps + postage + commission;
+            // IGV/ITF is applied over interest and taxable charges, never over amortized principal.
+            double taxableFees = interest + insurance + riskInsurance + gps + postage + commission;
             double tax = taxableFees * igvPct;
 
             double monthlyPayment = installment + insurance + riskInsurance + gps + postage + commission + tax;

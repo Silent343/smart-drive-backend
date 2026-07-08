@@ -14,7 +14,7 @@ import pe.edu.upc.smartdrive.platform.shared.domain.model.aggregates.AuditableAb
  * the residual value of the "Compra Inteligente" modality and the full set of initial and
  * recurring costs (desgravamen and all-risk insurance, GPS, postage, administration and
  * study/activation commissions, notary/registry costs) plus the IGV/ITF tax applied over
- * fees and insurance. The rate-conversion rules live here as domain behaviour.</p>
+ * interest and taxable charges. The rate-conversion rules live here as domain behaviour.</p>
  */
 @Entity
 public class CreditConfig extends AuditableAbstractAggregateRoot<CreditConfig> {
@@ -63,7 +63,7 @@ public class CreditConfig extends AuditableAbstractAggregateRoot<CreditConfig> {
     private double finalInstallmentPct;
 
     // ---- Taxes ----
-    /** IGV/ITF tax (%) applied over fees and insurance amounts. */
+    /** IGV/ITF tax (%) applied over interest and taxable charge amounts. */
     @Column(nullable = false)
     private double igvItfPct;
 

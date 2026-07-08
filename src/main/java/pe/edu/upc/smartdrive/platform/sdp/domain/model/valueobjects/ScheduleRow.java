@@ -16,7 +16,7 @@ public record ScheduleRow(String id, String loanId, int installmentNo, Instant p
                           double gps,
                           double postage,
                           double commission,       // administration
-                          double tax,              // IGV/ITF over fees & insurance
+                          double tax,              // IGV/ITF over interest and taxable charges
                           double monthlyPayment, double endingBalance,
                           String gracePeriodType) {
 }

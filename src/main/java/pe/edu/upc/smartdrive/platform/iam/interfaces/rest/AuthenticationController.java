@@ -16,6 +16,8 @@ import pe.edu.upc.smartdrive.platform.iam.interfaces.rest.transform.Authenticate
 import pe.edu.upc.smartdrive.platform.iam.interfaces.rest.transform.SignInCommandFromResourceAssembler;
 import pe.edu.upc.smartdrive.platform.iam.interfaces.rest.transform.SignUpCommandFromResourceAssembler;
 
+import java.util.Map;
+
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /**
@@ -44,7 +46,8 @@ public class AuthenticationController {
     @Operation(summary = "Sign in", description = "Validates credentials; returns a JWT or a TOTP challenge when 2FA is enabled.")
     public ResponseEntity<?> signIn(@RequestBody SignInResource resource) {
         var command = SignInCommandFromResourceAssembler.toCommandFromResource(resource);
-        var user = userCommandService.handle(command).orElseThrow();
+        var user = userCommandService.handle(command)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
         if (user.isTotpEnabled()) {
             // Expose the public UUID — never the sequential Long primary key.
             return ResponseEntity.ok(new TotpChallengeResource(true, user.getPublicId()));
@@ -52,6 +55,15 @@ public class AuthenticationController {
         var token = userCommandService.issueTokenFor(user);
         var domain = userCommandService.resolveCompanyDomain(user);
         return ResponseEntity.ok(AuthenticatedUserResourceFromEntityAssembler.toResourceFromEntity(user, domain, token));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleBadCredentials(IllegalArgumentException ex) {
+        if ("Invalid credentials".equals(ex.getMessage())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid credentials"));
+        }
+        return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
     }
 
     /** Registers a new administrator account. */
