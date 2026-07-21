@@ -2,6 +2,7 @@ package pe.edu.upc.smartdrive.platform.iam.infrastructure.authorization.sfs.conf
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,6 +32,9 @@ import java.util.List;
 @Configuration
 @EnableMethodSecurity
 public class WebSecurityConfiguration {
+
+    @Value("${spring.h2.console.enabled:false}")
+    private boolean h2ConsoleEnabled;
 
     private final UserDetailsService userDetailsService;
     private final BearerTokenService tokenService;
@@ -77,21 +81,28 @@ public class WebSecurityConfiguration {
         http.csrf(csrf -> csrf.disable())
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedRequestHandler))
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(
-                                "/authentication/**",
-                                "/advisor/**",
-                                "/totp-setup",
-                                "/verify-totp-setup",
-                                "/verify-totp",
-                                "/v3/api-docs/**",
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/swagger-resources/**",
-                                "/webjars/**",
-                                "/h2-console/**").permitAll()
-                        .anyRequest().authenticated());
-        http.headers(headers -> headers.frameOptions(frame -> frame.disable())); // allow H2 console
+                .authorizeHttpRequests(authorize -> {
+                    authorize.requestMatchers(
+                            "/authentication/**",
+                            "/advisor/**",
+                            "/totp-setup",
+                            "/verify-totp-setup",
+                            "/verify-totp",
+                            "/v3/api-docs/**",
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/swagger-resources/**",
+                            "/webjars/**").permitAll();
+                    if (h2ConsoleEnabled) {
+                        authorize.requestMatchers("/h2-console/**").permitAll();
+                    }
+                    authorize.anyRequest().authenticated();
+                });
+        http.headers(headers -> {
+            if (h2ConsoleEnabled) {
+                headers.frameOptions(frame -> frame.disable());
+            }
+        });
         http.addFilterBefore(authorizationRequestFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

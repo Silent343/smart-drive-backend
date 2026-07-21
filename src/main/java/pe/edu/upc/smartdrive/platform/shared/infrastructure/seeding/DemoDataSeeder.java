@@ -2,6 +2,7 @@ package pe.edu.upc.smartdrive.platform.shared.infrastructure.seeding;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import pe.edu.upc.smartdrive.platform.arm.domain.model.aggregates.Client;
 import pe.edu.upc.smartdrive.platform.arm.domain.model.aggregates.Vehicle;
@@ -42,6 +43,7 @@ import java.time.Instant;
  */
 @Component
 @Order(1)
+@Profile("!supabase")
 public class DemoDataSeeder implements CommandLineRunner {
 
     private static final String DEMO_TOTP_SECRET = "GVLHIWCSIZWEGOT2IAUFISBJMV4GSRS3";
